@@ -53,9 +53,12 @@ class Compressor(object):
     def css_compressor(self):
         return to_class(settings.PIPELINE_CSS_COMPRESSOR)
 
-    def compress_js(self, paths, templates=None, **kwargs):
+    def compress_js(self, paths, templates=None, dyn_sources=None, **kwargs):
         """Concatenate and compress JS files"""
-        js = self.concatenate(paths)
+        js = ''
+        if dyn_sources:
+            js += self.compile_dyn_sources(dyn_sources)
+        js += self.concatenate(paths)
         if templates:
             js = js + self.compile_templates(templates)
 
@@ -80,6 +83,14 @@ class Compressor(object):
             return self.with_data_uri(css)
         else:
             raise CompressorError("\"%s\" is not a valid variant" % variant)
+
+    def compile_dyn_sources(self, dyn_sources):
+        if not dyn_sources:
+            return ''
+        res = ''
+        for func in dyn_sources:
+            res += func()
+        return res
 
     def compile_templates(self, paths):
         compiled = []

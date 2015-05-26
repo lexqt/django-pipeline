@@ -75,8 +75,11 @@ class PipelineExtension(PipelineMixin, Extension):
         template = self.environment.get_template("pipeline/inline_js.jinja")
         return template.render(context)
 
-    def render_individual_js(self, package, paths, templates=None):
-        tags = [self.render_js(package, js) for js in paths]
+    def render_individual_js(self, package, paths, templates=None, dyn_sources=None):
+        tags = []
+        if dyn_sources:
+            tags.append(self.render_inline(package, dyn_sources))
+        tags.extend(self.render_js(package, js) for js in paths)
         if templates:
             tags.append(self.render_inline(package, templates))
         return '\n'.join(tags)

@@ -5,6 +5,12 @@ from django.contrib.staticfiles.finders import find
 from django.core.files.base import ContentFile
 from django.utils.encoding import smart_str
 
+try:
+    from django.utils.module_loading import import_string
+except ImportError:
+    from django.utils.module_loading import import_by_path as import_string
+
+
 from pipeline.compilers import Compiler
 from pipeline.compressors import Compressor
 from pipeline.conf import settings
@@ -16,28 +22,45 @@ from pipeline.signals import css_compressed, js_compressed
 class Package(object):
     def __init__(self, config):
         self.config = config
-        self._sources = []
+        self._paths = []
+        self._dyn_sources = []
+        self._templates = []
+        self._parsed = False
+
+    def _parse(self):
+        if self._parsed:
+            return
+        dyn_src_prefix = settings.PIPELINE_DYN_SOURCE_PREFIX
+        dyn_prefix_len = len(dyn_src_prefix)
+        tmpl_ext = settings.PIPELINE_TEMPLATE_EXT
+        for pattern in self.config.get('source_filenames', []):
+            if pattern.startswith(dyn_src_prefix):
+                func = import_string(pattern[dyn_prefix_len:])
+                self._dyn_sources.append(func)
+                continue
+            for path in glob(pattern):
+                if path.endswith(tmpl_ext):
+                    target = self._templates
+                else:
+                    target = self._paths
+                if path not in target and find(path):
+                    target.append(str(path))
+        self._parsed = True
 
     @property
-    def sources(self):
-        if not self._sources:
-            paths = []
-            for pattern in self.config.get('source_filenames', []):
-                for path in glob(pattern):
-                    if path not in paths and find(path):
-                        paths.append(str(path))
-            self._sources = paths
-        return self._sources
+    def dyn_sources(self):
+        self._parse()
+        return self._dyn_sources
 
     @property
     def paths(self):
-        return [path for path in self.sources
-                if not path.endswith(settings.PIPELINE_TEMPLATE_EXT)]
+        self._parse()
+        return self._paths
 
     @property
     def templates(self):
-        return [path for path in self.sources
-                if path.endswith(settings.PIPELINE_TEMPLATE_EXT)]
+        self._parse()
+        return self._templates
 
     @property
     def output_filename(self):
@@ -109,10 +132,17 @@ class Packager(object):
         return output_filename
 
     def pack_javascripts(self, package, **kwargs):
-        return self.pack(package, self.compressor.compress_js, js_compressed, templates=package.templates, **kwargs)
+        return self.pack(
+            package, self.compressor.compress_js, js_compressed,
+            templates=package.templates, dyn_sources=package.dyn_sources,
+            **kwargs
+        )
 
     def pack_templates(self, package):
         return self.compressor.compile_templates(package.templates)
+
+    def pack_dyn_sources(self, package):
+        return self.compressor.compile_dyn_sources(package.dyn_sources)
 
     def save_file(self, path, content):
         return self.storage.save(path, ContentFile(smart_str(content)))

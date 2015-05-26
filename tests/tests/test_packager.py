@@ -6,6 +6,7 @@ from pipeline.collector import default_collector
 from pipeline.packager import Packager, PackageNotFound
 
 from tests.utils import _
+from tests import dyn_sources
 
 
 class PackagerTest(TestCase):
@@ -43,6 +44,21 @@ class PackagerTest(TestCase):
             }
         })
         self.assertEqual(packages['templates'].templates, [_('pipeline/templates/photo/list.jst')])
+
+    def test_dyn_sources(self):
+        packager = Packager()
+        packages = packager.create_packages({
+            'test': {
+                'source_filenames': [
+                    'dyn:tests.dyn_sources.site_domain',
+                    'dyn:tests.dyn_sources.misc_data',
+                ],
+            }
+        })
+        self.assertEqual(packages['test'].dyn_sources, [
+            dyn_sources.site_domain,
+            dyn_sources.misc_data,
+        ])
 
     def tearDown(self):
         default_collector.clear()

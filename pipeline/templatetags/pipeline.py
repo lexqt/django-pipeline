@@ -43,7 +43,8 @@ class PipelineMixin(object):
             method = getattr(self, "render_individual_{0}".format(package_type))
             paths = packager.compile(package.paths)
             templates = packager.pack_templates(package)
-            return method(package, paths, templates=templates)
+            dyn_sources = packager.pack_dyn_sources(package)
+            return method(package, paths, templates=templates, dyn_sources=dyn_sources)
 
 
 class StylesheetNode(PipelineMixin, template.Node):
@@ -100,8 +101,11 @@ class JavascriptNode(PipelineMixin, template.Node):
         })
         return render_to_string("pipeline/inline_js.html", context)
 
-    def render_individual_js(self, package, paths, templates=None):
-        tags = [self.render_js(package, js) for js in paths]
+    def render_individual_js(self, package, paths, templates=None, dyn_sources=None):
+        tags = []
+        if dyn_sources:
+            tags.append(self.render_inline(package, dyn_sources))
+        tags.extend(self.render_js(package, js) for js in paths)
         if templates:
             tags.append(self.render_inline(package, templates))
         return '\n'.join(tags)

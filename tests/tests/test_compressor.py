@@ -19,6 +19,7 @@ from pipeline.collector import default_collector
 
 
 from tests.utils import _
+from tests import dyn_sources
 
 
 class CompressorTest(TestCase):
@@ -111,6 +112,15 @@ class CompressorTest(TestCase):
             _('pipeline/templates/photo/detail.jst')
         ])
         self.assertEqual(templates, """window.JST = window.JST || {};\n%s\nwindow.JST[\'video_detail\'] = template(\'<div class="video">\\n <video src="<%%= src %%>" />\\n <div class="caption">\\n  <%%= description %%>\\n </div>\\n</div>\');\nwindow.JST[\'photo_detail\'] = template(\'<div class="photo">\\n <img src="<%%= src %%>" />\\n <div class="caption">\\n  <%%= caption %%> by <%%= author %%>\\n </div>\\n</div>\');\n""" % TEMPLATE_FUNC)
+
+    def test_compile_dyn_sources(self):
+        res = self.compressor.compile_dyn_sources([dyn_sources.site_domain])
+        self.assertEqual(res, """var SITE_DOMAIN = 'example.com';""")
+        res = self.compressor.compile_dyn_sources([
+            dyn_sources.site_domain,
+            dyn_sources.misc_data,
+        ])
+        self.assertEqual(res, """var SITE_DOMAIN = 'example.com';var MISC_DATA = {a: 100};""")
 
     def test_embeddable(self):
         self.assertFalse(self.compressor.embeddable(_('pipeline/images/sprite.png'), None))
