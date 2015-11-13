@@ -116,9 +116,17 @@ PIPELINE_JS = {
             'async': True,
             'defer': True,
         }
-    }
+    },
+    'dyn_scripts': {
+        'source_filenames': (
+            'pipeline/js/application.js',
+            'dyn:tests.dyn_sources.site_domain',
+        ),
+        'output_filename': 'dyn_scripts.js'
+    },
 }
 
+CUSTOM_DYN_SETTING = 'example.com'
 
 TEMPLATES = [
     {

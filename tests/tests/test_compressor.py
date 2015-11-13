@@ -19,6 +19,7 @@ from pipeline.compressors.yuglify import YuglifyCompressor
 from pipeline.collector import default_collector
 
 
+from tests import dyn_sources
 from tests.utils import _
 
 
