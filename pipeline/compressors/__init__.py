@@ -217,7 +217,11 @@ class Compressor(object):
         return content
 
     def read_text(self, path):
-        content = self.read_bytes(path)
+        if callable(path):
+            content = path()
+        else:
+            content = self.read_bytes(path)
+
         return force_text(content)
 
 

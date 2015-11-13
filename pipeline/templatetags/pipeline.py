@@ -110,6 +110,9 @@ class JavascriptNode(PipelineMixin, template.Node):
         return self.render_compressed(package, 'js')
 
     def render_js(self, package, path):
+        if callable(path):
+            return self.render_inline(package, path())
+
         template_name = package.template_name or "pipeline/js.html"
         context = package.extra_context
         context.update({
@@ -126,7 +129,13 @@ class JavascriptNode(PipelineMixin, template.Node):
         return render_to_string("pipeline/inline_js.html", context)
 
     def render_individual_js(self, package, paths, templates=None):
-        tags = [self.render_js(package, js) for js in paths]
+        tags = []
+        for js in paths:
+            if callable(js):
+                content = self.render_inline(package, js())
+            else:
+                content = self.render_js(package, js)
+            tags.append(content)
         if templates:
             tags.append(self.render_inline(package, templates))
         return '\n'.join(tags)

@@ -4,6 +4,10 @@ from django.contrib.staticfiles.storage import staticfiles_storage
 from django.contrib.staticfiles.finders import find
 from django.core.files.base import ContentFile
 from django.utils.encoding import smart_bytes
+try:
+    from django.utils.module_loading import import_string
+except ImportError:
+    from django.utils.module_loading import import_by_path as import_string
 
 from pipeline.compilers import Compiler
 from pipeline.compressors import Compressor
@@ -22,7 +26,13 @@ class Package(object):
     def sources(self):
         if not self._sources:
             paths = []
+            dyn_src_prefix = settings.PIPELINE_DYN_SOURCE_PREFIX
+            dyn_prefix_len = len(dyn_src_prefix)
             for pattern in self.config.get('source_filenames', []):
+                if pattern.startswith(dyn_src_prefix):
+                    func = import_string(pattern[dyn_prefix_len:])
+                    paths.append(func)
+                    continue
                 for path in glob(pattern):
                     if path not in paths and find(path):
                         paths.append(str(path))
@@ -32,12 +42,12 @@ class Package(object):
     @property
     def paths(self):
         return [path for path in self.sources
-                if not path.endswith(settings.PIPELINE_TEMPLATE_EXT)]
+                if not isinstance(path, basestring) or not path.endswith(settings.PIPELINE_TEMPLATE_EXT)]
 
     @property
     def templates(self):
         return [path for path in self.sources
-                if path.endswith(settings.PIPELINE_TEMPLATE_EXT)]
+                if isinstance(path, basestring) and path.endswith(settings.PIPELINE_TEMPLATE_EXT)]
 
     @property
     def output_filename(self):

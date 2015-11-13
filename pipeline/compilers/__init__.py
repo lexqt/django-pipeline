@@ -30,6 +30,8 @@ class Compiler(object):
 
     def compile(self, paths, force=False):
         def _compile(input_path):
+            if callable(input_path):
+                return input_path
             for compiler in self.compilers:
                 compiler = compiler(verbose=self.verbose, storage=self.storage)
                 if compiler.match_file(input_path):
